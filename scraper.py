@@ -119,12 +119,13 @@ def montar_termo_busca(pais, refino, valor):
     return " ".join(partes)
 
 
-def baixar_pagina(termo):
+def baixar_pagina(termo, pagina=1):
     """Baixa a página de busca do site e devolve o HTML ou None se der erro."""
-    # Parâmetros da URL: op=2 é a busca em andamento
     parametros = {
         "op": "2",
         "pesquisa": termo,
+        "v": "21",       # <-- força 21 itens por página (ativa paginação)
+        "pag": str(pagina),
     }
 
     try:
@@ -139,7 +140,7 @@ def baixar_pagina(termo):
     except requests.RequestException as erro:
         print(f"   Erro ao baixar a página: {erro}")
         return None
-
+    
 def encontrar_lotes(html):
     """Recebe o HTML da página e devolve uma lista com os blocos de cada lote."""
     sopa = BeautifulSoup(html, "html.parser")
@@ -239,6 +240,34 @@ def filtrar_por_refino(lotes, refino, valor):
 
     return filtrados
 
+def baixar_todas_paginas(termo):
+    """Baixa todas as páginas de resultados até não encontrar mais lotes."""
+    todos_lotes = []
+    pagina = 1
+
+    while True:
+        print(f"   Baixando página {pagina}...")
+        html = baixar_pagina(termo, pagina)
+
+        if html is None:
+            break
+
+        lotes = encontrar_lotes(html)
+
+        if not lotes:
+            # Página vazia: acabaram os resultados
+            break
+
+        todos_lotes.extend(lotes)
+        pagina += 1
+
+        # Segurança: para depois de 20 páginas
+        if pagina > 20:
+            print("   Limite de 20 páginas atingido.")
+            break
+
+    return todos_lotes
+
 def buscar_cedulas():
     """Fluxo principal de busca."""
     pais = pedir_pais()
@@ -278,17 +307,13 @@ def buscar_cedulas():
     print(f"   Buscando por: {termo}")
     print("=" * 45)
 
-    html = baixar_pagina(termo)
+    lotes = baixar_todas_paginas(termo)
 
-    if html is None:
-        print("   Não foi possível baixar a página.")
+    if not lotes:
+        print("   Não foi possível baixar as páginas.")
         return
 
-    print(f"   Página baixada com sucesso.")
-    print(f"   Tamanho do HTML: {len(html)} caracteres.")
     print()
-
-    lotes = encontrar_lotes(html)
     print(f"   Lotes encontrados no site: {len(lotes)}")
 
     lotes = filtrar_cedulas(lotes)
