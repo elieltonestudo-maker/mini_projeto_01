@@ -3,6 +3,7 @@
 
 import requests
 from bs4 import BeautifulSoup
+import re
 
 # Configurações do site
 ENDERECO_BUSCA = "https://leiloesbr.com.br/busca_andamento.asp"
@@ -16,6 +17,14 @@ CABECALHO = {
     )
 }
 
+# Padrões de estado de conservação (usados com expressão regular)
+PADROES_ESTADO = {
+    "mbc": r"\bmbc\b",
+    "sob": r"\bsob\b|\bsoberba\b",
+    "fe": r"\bfe\b|\bflor de estampa\b",
+    "bc": r"\bbc\b",
+    "regular": r"\bregular\b",
+}
 
 def mostrar_menu_principal():
     """Mostra o menu inicial e devolve a opção escolhida."""
@@ -42,7 +51,8 @@ def mostrar_menu_refino():
     print("   1 - Buscar por ano")
     print("   2 - Buscar por Pick (código internacional)")
     print("   3 - Buscar por estado de conservação")
-    print("   4 - Buscar só pelo país")
+    print("   4 - Buscar por leiloeiro")
+    print("   5 - Buscar só pelo país")
     print("   0 - Voltar")
     print("-" * 45)
     return input("   Escolha uma opção: ")
@@ -57,14 +67,17 @@ def pedir_pick():
     """Pede o número do Pick da cédula."""
     return input("   Digite o número do Pick (ex: 216): ").strip()
 
+def pedir_leiloeiro():
+    """Pede o nome do leiloeiro."""
+    return input("   Digite o nome do leiloeiro: ").strip().lower()
 
 def mostrar_menu_estado():
     """Mostra as opções de estado de conservação."""
     print()
     print("   Estados disponíveis:")
-    print("   1 - MBC (Muito Bem Conservada)")
+    print("   1 - FE / Flor de Estampa")
     print("   2 - SOB / Soberba")
-    print("   3 - FE / Flor de Estampa")
+    print("   3 - MBC (Muito Bem Conservada)")
     print("   4 - BC (Bem Conservada)")
     print("   5 - Digitar outro")
     print("   0 - Voltar")
@@ -76,11 +89,11 @@ def escolher_estado():
     """Traduz a opção do menu para o termo de busca."""
     opcao = mostrar_menu_estado()
     if opcao == "1":
-        return "mbc"
+        return "fe"
     elif opcao == "2":
         return "sob"
     elif opcao == "3":
-        return "fe"
+        return "mbc"
     elif opcao == "4":
         return "bc"
     elif opcao == "5":
@@ -91,16 +104,17 @@ def escolher_estado():
 
 def montar_termo_busca(pais, refino, valor):
     """Junta o país, a palavra 'cedula' e o refinamento em um termo de busca só."""
-    # Sempre inclui "cedula" para o site filtrar melhor
     partes = [pais, "cedula"]
 
+    # Ano, pick e estado ajudam na URL do site
     if refino == "ano":
         partes.append(valor)
     elif refino == "pick":
         partes.append(valor)
     elif refino == "estado":
         partes.append(valor)
-    # Se refino == "pais", não adiciona nada extra
+    # Leiloeiro NÃO vai pra URL (o site só busca no título)
+    # País puro também não adiciona nada extra
 
     return " ".join(partes)
 
@@ -194,9 +208,8 @@ def filtrar_cedulas(lotes):
     return filtrados
 
 def filtrar_por_refino(lotes, refino, valor):
-    """Filtra os lotes pelo refino escolhido (ano, pick ou estado)."""
+    """Filtra os lotes pelo refino escolhido (ano, pick, estado ou leiloeiro)."""
     if refino == "pais" or valor is None:
-        # Sem refino, devolve a lista inteira
         return lotes
 
     filtrados = []
@@ -207,18 +220,21 @@ def filtrar_por_refino(lotes, refino, valor):
         titulo_minusculo = titulo.lower()
 
         if refino == "ano":
-            # Busca o ano no título
             if valor in titulo_minusculo:
                 filtrados.append(lote)
 
         elif refino == "pick":
-            # Tenta achar o pick no formato "216" ou "p-216"
             if valor in titulo_minusculo or f"p-{valor}" in titulo_minusculo:
                 filtrados.append(lote)
 
         elif refino == "estado":
-            # Busca o estado no título
-            if valor in titulo_minusculo:
+            padrao = PADROES_ESTADO.get(valor)
+            if padrao and re.search(padrao, titulo, re.IGNORECASE):
+                filtrados.append(lote)
+
+        elif refino == "leiloeiro":
+            leiloeiro = pegar_leiloeiro(lote)
+            if leiloeiro and valor in leiloeiro.lower():
                 filtrados.append(lote)
 
     return filtrados
@@ -248,6 +264,9 @@ def buscar_cedulas():
             print("   Voltando ao menu.")
             return
     elif opcao == "4":
+        refino = "leiloeiro"
+        valor = pedir_leiloeiro()
+    elif opcao == "5":
         refino = "pais"
     else:
         print("   Voltando ao menu.")
@@ -265,7 +284,7 @@ def buscar_cedulas():
         print("   Não foi possível baixar a página.")
         return
 
-        print(f"   Página baixada com sucesso.")
+    print(f"   Página baixada com sucesso.")
     print(f"   Tamanho do HTML: {len(html)} caracteres.")
     print()
 
@@ -279,7 +298,6 @@ def buscar_cedulas():
     print(f"   Lotes após o refino: {len(lotes)}")
     print()
 
-    # Mostra os 8 primeiros lotes com todos os dados
     print("   Primeiros 8 lotes encontrados:")
     print("-" * 45)
     for lote in lotes[:8]:
@@ -292,7 +310,6 @@ def buscar_cedulas():
         print(f"   Leiloeiro: {leiloeiro}")
         print(f"   Link:      {link}")
         print()
-
 
 def main():
     """Função principal que roda o programa."""
