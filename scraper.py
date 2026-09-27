@@ -158,6 +158,25 @@ def pegar_titulo(lote):
     titulo = tag_a.get("data-bs-original-title") or tag_a.get_text(strip=True)
     return titulo
 
+def pegar_preco(lote):
+    """Pega o preço do lote."""
+    tag_preco = lote.find("div", class_="venda-price")
+    if tag_preco is None:
+        return None
+    return tag_preco.get_text(strip=True)
+
+def pegar_leiloeiro(lote):
+    """Pega o nome do leiloeiro do lote."""
+    # As infos ficam em <div class="mostbidded__info ...">, e a última é o leiloeiro
+    infos = lote.find_all("div", class_="mostbidded__info")
+    if not infos:
+        return None
+    # A última div de info é o leiloeiro (a primeira é data/UF)
+    tag_leiloeiro = infos[-1].find("a")
+    if tag_leiloeiro is None:
+        return infos[-1].get_text(strip=True)
+    return tag_leiloeiro.get_text(strip=True)
+
 def filtrar_cedulas(lotes):
     """Filtra a lista, deixando só os lotes cujo título menciona cédula."""
     # Variações aceitas (com e sem acento, singular e plural)
@@ -260,14 +279,18 @@ def buscar_cedulas():
     print(f"   Lotes após o refino: {len(lotes)}")
     print()
 
-    # Mostra o link dos 8 primeiros lotes
-    print("   Links dos 8 primeiros lotes:")
+    # Mostra os 8 primeiros lotes com todos os dados
+    print("   Primeiros 8 lotes encontrados:")
     print("-" * 45)
     for lote in lotes[:8]:
         titulo = pegar_titulo(lote)
+        preco = pegar_preco(lote)
+        leiloeiro = pegar_leiloeiro(lote)
         link = pegar_link(lote)
-        print(f"   Título: {titulo}")
-        print(f"   Link:   {link}")
+        print(f"   Título:    {titulo}")
+        print(f"   Preço:     {preco}")
+        print(f"   Leiloeiro: {leiloeiro}")
+        print(f"   Link:      {link}")
         print()
 
 
