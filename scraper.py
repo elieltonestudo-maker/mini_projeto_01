@@ -90,15 +90,19 @@ def escolher_estado():
 
 
 def montar_termo_busca(pais, refino, valor):
-    """Junta país e refinamento em um termo de busca só."""
+    """Junta o país, a palavra 'cedula' e o refinamento em um termo de busca só."""
+    # Sempre inclui "cedula" para o site filtrar melhor
+    partes = [pais, "cedula"]
+
     if refino == "ano":
-        return f"{pais} {valor}"
+        partes.append(valor)
     elif refino == "pick":
-        return f"{pais} {valor}"
+        partes.append(valor)
     elif refino == "estado":
-        return f"{pais} {valor}"
-    else:
-        return pais
+        partes.append(valor)
+    # Se refino == "pais", não adiciona nada extra
+
+    return " ".join(partes)
 
 
 def baixar_pagina(termo):
@@ -129,6 +133,46 @@ def encontrar_lotes(html):
     lotes = sopa.find_all("div", class_="mostbidded")
     return lotes
 
+def pegar_link(lote):
+    """Pega o link do lote e devolve a URL completa."""
+    # O link fica dentro de <a> com classe 'stretched-link'
+    tag_link = lote.find("a", class_="stretched-link")
+    if tag_link is None:
+        return None
+    # O href é relativo, então juntamos com o endereço do site
+    href = tag_link.get("href", "")
+    if href.startswith("http"):
+        return href
+    return "https://leiloesbr.com.br/" + href
+
+def pegar_titulo(lote):
+    """Pega o título completo do lote (usando o atributo data-bs-original-title)."""
+    # O título completo fica no atributo data-bs-original-title do <a> dentro do título
+    tag_titulo = lote.find("div", class_="mostbidded__title")
+    if tag_titulo is None:
+        return None
+    tag_a = tag_titulo.find("a")
+    if tag_a is None:
+        return None
+    # Tenta pegar o atributo completo; se não tiver, usa o texto do <h3>
+    titulo = tag_a.get("data-bs-original-title") or tag_a.get_text(strip=True)
+    return titulo
+
+def filtrar_cedulas(lotes):
+    """Filtra a lista, deixando só os lotes cujo título menciona cédula."""
+    # Variações aceitas (com e sem acento, singular e plural)
+    palavras = ["cédula", "cedula", "cédulas", "cedulas"]
+    filtrados = []
+    for lote in lotes:
+        titulo = pegar_titulo(lote)
+        if titulo is None:
+            continue
+        titulo_minusculo = titulo.lower()
+        for palavra in palavras:
+            if palavra in titulo_minusculo:
+                filtrados.append(lote)
+                break
+    return filtrados
 
 def buscar_cedulas():
     """Fluxo principal de busca."""
@@ -177,7 +221,21 @@ def buscar_cedulas():
     print()
 
     lotes = encontrar_lotes(html)
-    print(f"   Lotes encontrados: {len(lotes)}")
+    print(f"   Lotes encontrados no site: {len(lotes)}")
+
+    lotes = filtrar_cedulas(lotes)
+    print(f"   Lotes que são cédulas: {len(lotes)}")
+    print()
+
+    # Mostra o link dos 8 primeiros lotes
+    print("   Links dos 8 primeiros lotes:")
+    print("-" * 45)
+    for lote in lotes[:8]:
+        titulo = pegar_titulo(lote)
+        link = pegar_link(lote)
+        print(f"   Título: {titulo}")
+        print(f"   Link:   {link}")
+        print()
 
 
 def main():
