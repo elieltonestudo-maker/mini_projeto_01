@@ -2,6 +2,7 @@
 # Este programa busca cédulas em leilões online usando web scraping.
 
 import requests
+from bs4 import BeautifulSoup
 
 # Configurações do site
 ENDERECO_BUSCA = "https://leiloesbr.com.br/busca_andamento.asp"
@@ -121,6 +122,13 @@ def baixar_pagina(termo):
         print(f"   Erro ao baixar a página: {erro}")
         return None
 
+def encontrar_lotes(html):
+    """Recebe o HTML da página e devolve uma lista com os blocos de cada lote."""
+    sopa = BeautifulSoup(html, "html.parser")
+    # Cada lote fica dentro de uma <div class="mostbidded ...">
+    lotes = sopa.find_all("div", class_="mostbidded")
+    return lotes
+
 
 def buscar_cedulas():
     """Fluxo principal de busca."""
@@ -164,12 +172,12 @@ def buscar_cedulas():
         print("   Não foi possível baixar a página.")
         return
 
-    print(f"   Página baixada com sucesso.")
+        print(f"   Página baixada com sucesso.")
     print(f"   Tamanho do HTML: {len(html)} caracteres.")
     print()
-    print("   Primeiros 500 caracteres do HTML:")
-    print("-" * 45)
-    print(html[:500])
+
+    lotes = encontrar_lotes(html)
+    print(f"   Lotes encontrados: {len(lotes)}")
 
 
 def main():
