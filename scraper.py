@@ -44,19 +44,6 @@ def pedir_pais():
     return pais.strip().lower()
 
 
-def mostrar_menu_refino():
-    """Mostra o menu de refinamento e devolve a opção escolhida."""
-    print()
-    print("   Como deseja refinar a busca?")
-    print("   1 - Buscar por ano")
-    print("   2 - Buscar por Pick (código internacional)")
-    print("   3 - Buscar por estado de conservação")
-    print("   4 - Buscar por leiloeiro")
-    print("   5 - Buscar só pelo país")
-    print("   0 - Voltar")
-    print("-" * 45)
-    return input("   Escolha uma opção: ")
-
 
 def pedir_ano():
     """Pede o ano da cédula."""
@@ -101,20 +88,132 @@ def escolher_estado():
     else:
         return None
 
+def mostrar_resumo_filtros(pais, filtros):
+    """Mostra o cabeçalho com o país e os filtros ativos no momento."""
+    print()
+    print("=" * 45)
+    print(f"   País: {pais}")
 
-def montar_termo_busca(pais, refino, valor):
-    """Junta o país, a palavra 'cedula' e o refinamento em um termo de busca só."""
-    partes = [pais, "cedula"]
+    ativos = []
+    if filtros["ano"]:
+        ativos.append(f"   - ano: {filtros['ano']}")
+    if filtros["pick"]:
+        ativos.append(f"   - pick: {filtros['pick']}")
+    if filtros["estado"]:
+        ativos.append(f"   - estado: {filtros['estado']}")
+    if filtros["leiloeiro"]:
+        ativos.append(f"   - leiloeiro: {filtros['leiloeiro']}")
 
-    # Ano, pick e estado ajudam na URL do site
-    if refino == "ano":
-        partes.append(valor)
-    elif refino == "pick":
-        partes.append(valor)
-    elif refino == "estado":
-        partes.append(valor)
-    # Leiloeiro NÃO vai pra URL (o site só busca no título)
-    # País puro também não adiciona nada extra
+    if ativos:
+        print("   Filtros ativos:")
+        for linha in ativos:
+            print(linha)
+    else:
+        print("   Filtros ativos: (nenhum)")
+
+    print()
+    print("   1 - Adicionar filtro de ano")
+    print("   2 - Adicionar filtro de Pick")
+    print("   3 - Adicionar filtro de estado de conservação")
+    print("   4 - Adicionar filtro de leiloeiro")
+    print("   5 - Buscar agora")
+    print("   6 - Limpar filtros")
+    print("   0 - Voltar ao menu principal")
+    print("=" * 45)
+
+
+def escolher_filtros(pais):
+    """Menu combinável de filtros. Roda até o usuário mandar buscar.
+
+    Retorna um dicionário com os filtros escolhidos, ou None se o
+    usuário quiser voltar ao menu principal sem buscar.
+    """
+    filtros = {
+        "ano": None,
+        "pick": None,
+        "estado": None,
+        "leiloeiro": None,
+    }
+
+    while True:
+        mostrar_resumo_filtros(pais, filtros)
+        opcao = input("   Escolha uma opção: ")
+
+        if opcao == "1":
+            valor = pedir_ano()
+            if valor:
+                filtros["ano"] = valor
+                print(f"   Filtro de ano adicionado: {valor}")
+        elif opcao == "2":
+            valor = pedir_pick()
+            if valor:
+                filtros["pick"] = valor
+                print(f"   Filtro de Pick adicionado: {valor}")
+        elif opcao == "3":
+            estado = escolher_estado()
+            if estado:
+                filtros["estado"] = estado
+                print(f"   Filtro de estado adicionado: {estado}")
+        elif opcao == "4":
+            valor = pedir_leiloeiro()
+            if valor:
+                filtros["leiloeiro"] = valor
+                print(f"   Filtro de leiloeiro adicionado: {valor}")
+        elif opcao == "5":
+            return filtros
+        elif opcao == "6":
+            for chave in filtros:
+                filtros[chave] = None
+            print("   Filtros limpos.")
+        elif opcao == "0":
+            return None
+        else:
+            print("   Opção inválida.")
+
+
+def aplicar_filtros(lotes, filtros):
+    """Aplica todos os filtros ativos na lista de lotes."""
+    # Se todos os filtros forem None, devolve a lista inteira
+    if not any(filtros.values()):
+        return lotes
+
+    filtrados = []
+    for lote in lotes:
+        titulo = pegar_titulo(lote)
+        leiloeiro = pegar_leiloeiro(lote)
+        if titulo is None:
+            continue
+        titulo_minusculo = titulo.lower()
+
+        passa = True
+
+        if filtros["ano"]:
+            if filtros["ano"] not in titulo_minusculo:
+                passa = False
+
+        if filtros["pick"]:
+            p = filtros["pick"]
+            if p not in titulo_minusculo and f"p-{p}" not in titulo_minusculo:
+                passa = False
+
+        if filtros["estado"]:
+            padrao = PADROES_ESTADO.get(filtros["estado"])
+            if not padrao or not re.search(padrao, titulo, re.IGNORECASE):
+                passa = False
+
+        if filtros["leiloeiro"]:
+            if not leiloeiro or filtros["leiloeiro"] not in leiloeiro.lower():
+                passa = False
+
+        if passa:
+            filtrados.append(lote)
+
+    return filtrados
+
+
+def montar_termo_busca(pais):
+    """Junta o país com a palavra 'cedula' para a busca no site."""
+    return f"{pais} cedula"
 
     return " ".join(partes)
 
@@ -208,37 +307,7 @@ def filtrar_cedulas(lotes):
                 break
     return filtrados
 
-def filtrar_por_refino(lotes, refino, valor):
-    """Filtra os lotes pelo refino escolhido (ano, pick, estado ou leiloeiro)."""
-    if refino == "pais" or valor is None:
-        return lotes
 
-    filtrados = []
-    for lote in lotes:
-        titulo = pegar_titulo(lote)
-        if titulo is None:
-            continue
-        titulo_minusculo = titulo.lower()
-
-        if refino == "ano":
-            if valor in titulo_minusculo:
-                filtrados.append(lote)
-
-        elif refino == "pick":
-            if valor in titulo_minusculo or f"p-{valor}" in titulo_minusculo:
-                filtrados.append(lote)
-
-        elif refino == "estado":
-            padrao = PADROES_ESTADO.get(valor)
-            if padrao and re.search(padrao, titulo, re.IGNORECASE):
-                filtrados.append(lote)
-
-        elif refino == "leiloeiro":
-            leiloeiro = pegar_leiloeiro(lote)
-            if leiloeiro and valor in leiloeiro.lower():
-                filtrados.append(lote)
-
-    return filtrados
 
 def baixar_todas_paginas(termo):
     """Baixa todas as páginas de resultados até não encontrar mais lotes."""
@@ -275,33 +344,12 @@ def buscar_cedulas():
         print("   País não informado. Voltando ao menu.")
         return
 
-    opcao = mostrar_menu_refino()
-
-    refino = None
-    valor = None
-
-    if opcao == "1":
-        refino = "ano"
-        valor = pedir_ano()
-    elif opcao == "2":
-        refino = "pick"
-        valor = pedir_pick()
-    elif opcao == "3":
-        refino = "estado"
-        valor = escolher_estado()
-        if valor is None:
-            print("   Voltando ao menu.")
-            return
-    elif opcao == "4":
-        refino = "leiloeiro"
-        valor = pedir_leiloeiro()
-    elif opcao == "5":
-        refino = "pais"
-    else:
-        print("   Voltando ao menu.")
+    filtros = escolher_filtros(pais)
+    if filtros is None:
+        print("   Busca cancelada.")
         return
 
-    termo = montar_termo_busca(pais, refino, valor)
+    termo = montar_termo_busca(pais)
     print()
     print("=" * 45)
     print(f"   Buscando por: {termo}")
@@ -319,12 +367,25 @@ def buscar_cedulas():
     lotes = filtrar_cedulas(lotes)
     print(f"   Lotes que são cédulas: {len(lotes)}")
 
-    lotes = filtrar_por_refino(lotes, refino, valor)
-    print(f"   Lotes após o refino: {len(lotes)}")
+    lotes = aplicar_filtros(lotes, filtros)
+    print(f"   Lotes após os filtros: {len(lotes)}")
     print()
 
-    print("   Primeiros 8 lotes encontrados:")
+    if not lotes:
+        print("   Nenhum lote encontrado com esses critérios.")
+        print()
+        return
+
+    # Mostra os resultados (até 8 por vez)
+    mostrar_resultados(lotes)
+
+
+def mostrar_resultados(lotes):
+    """Mostra os lotes encontrados no terminal."""
+    total = len(lotes)
+    print(f"   Mostrando até 8 de {total} lotes:")
     print("-" * 45)
+
     for lote in lotes[:8]:
         titulo = pegar_titulo(lote)
         preco = pegar_preco(lote)
@@ -335,7 +396,7 @@ def buscar_cedulas():
         print(f"   Leiloeiro: {leiloeiro}")
         print(f"   Link:      {link}")
         print()
-
+        
 def main():
     """Função principal que roda o programa."""
     while True:
