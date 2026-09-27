@@ -1,8 +1,19 @@
 # mini_projeto_01 - Buscador de cédulas no site Leilões BR
 # Este programa busca cédulas em leilões online usando web scraping.
 
+import requests
+
 # Configurações do site
 ENDERECO_BUSCA = "https://leiloesbr.com.br/busca_andamento.asp"
+
+# Cabeçalho para o site achar que somos um navegador de verdade
+CABECALHO = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    )
+}
 
 
 def mostrar_menu_principal():
@@ -89,8 +100,30 @@ def montar_termo_busca(pais, refino, valor):
         return pais
 
 
+def baixar_pagina(termo):
+    """Baixa a página de busca do site e devolve o HTML ou None se der erro."""
+    # Parâmetros da URL: op=2 é a busca em andamento
+    parametros = {
+        "op": "2",
+        "pesquisa": termo,
+    }
+
+    try:
+        resposta = requests.get(
+            ENDERECO_BUSCA,
+            params=parametros,
+            headers=CABECALHO,
+            timeout=30,
+        )
+        resposta.raise_for_status()
+        return resposta.text
+    except requests.RequestException as erro:
+        print(f"   Erro ao baixar a página: {erro}")
+        return None
+
+
 def buscar_cedulas():
-    """Fluxo principal de busca (por enquanto só mostra o que seria buscado)."""
+    """Fluxo principal de busca."""
     pais = pedir_pais()
     if not pais:
         print("   País não informado. Voltando ao menu.")
@@ -124,7 +157,19 @@ def buscar_cedulas():
     print("=" * 45)
     print(f"   Buscando por: {termo}")
     print("=" * 45)
-    print("   (busca ainda não implementada)")
+
+    html = baixar_pagina(termo)
+
+    if html is None:
+        print("   Não foi possível baixar a página.")
+        return
+
+    print(f"   Página baixada com sucesso.")
+    print(f"   Tamanho do HTML: {len(html)} caracteres.")
+    print()
+    print("   Primeiros 500 caracteres do HTML:")
+    print("-" * 45)
+    print(html[:500])
 
 
 def main():
