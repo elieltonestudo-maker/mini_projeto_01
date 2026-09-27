@@ -381,22 +381,47 @@ def buscar_cedulas():
 
 
 def mostrar_resultados(lotes):
-    """Mostra os lotes encontrados no terminal."""
+    """Mostra os lotes no terminal, de 8 em 8."""
     total = len(lotes)
-    print(f"   Mostrando até 8 de {total} lotes:")
-    print("-" * 45)
+    inicio = 0
+    tamanho_bloco = 8
 
-    for lote in lotes[:8]:
-        titulo = pegar_titulo(lote)
-        preco = pegar_preco(lote)
-        leiloeiro = pegar_leiloeiro(lote)
-        link = pegar_link(lote)
-        print(f"   Título:    {titulo}")
-        print(f"   Preço:     {preco}")
-        print(f"   Leiloeiro: {leiloeiro}")
-        print(f"   Link:      {link}")
-        print()
-        
+    while inicio < total:
+        fim = min(inicio + tamanho_bloco, total)
+
+        print(f"   Mostrando {inicio + 1}-{fim} de {total} lotes:")
+        print("-" * 45)
+
+        for lote in lotes[inicio:fim]:
+            titulo = pegar_titulo(lote)
+            preco = pegar_preco(lote)
+            leiloeiro = pegar_leiloeiro(lote)
+            link = pegar_link(lote)
+            print(f"   Título:    {titulo}")
+            print(f"   Preço:     {preco}")
+            print(f"   Leiloeiro: {leiloeiro}")
+            print(f"   Link:      {link}")
+            print()
+
+        # Se ainda tem mais lotes, pergunta o que fazer
+        if fim < total:
+            print("-" * 45)
+            print("   [Enter] Próximos 8  |  [t] Mostrar todos  |  [q] Parar")
+            escolha = input("   Opção: ").strip().lower()
+
+            if escolha == "q":
+                print("   Listagem encerrada.")
+                return
+            elif escolha == "t":
+                tamanho_bloco = total - inicio  # mostra todo o resto de uma vez
+            # Se for Enter (vazio), continua com o bloco normal
+        else:
+            print("-" * 45)
+            print("   Fim da lista.")
+            print()
+
+        inicio = fim
+
 def main():
     """Função principal que roda o programa."""
     while True:
