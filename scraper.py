@@ -3,6 +3,7 @@
 
 import requests
 from bs4 import BeautifulSoup
+from datetime import datetime
 import re
 
 # Configurações do site
@@ -58,6 +59,10 @@ def pedir_leiloeiro():
     """Pede o nome do leiloeiro."""
     return input("   Digite o nome do leiloeiro: ").strip().lower()
 
+def pedir_data_limite():
+    """Pede uma data limite no formato D/M/AAAA."""
+    return input("   Mostrar lotes que encerram até (ex: 30/9/2026): ").strip()
+
 def mostrar_menu_estado():
     """Mostra as opções de estado de conservação."""
     print()
@@ -103,6 +108,8 @@ def mostrar_resumo_filtros(pais, filtros):
         ativos.append(f"   - estado: {filtros['estado']}")
     if filtros["leiloeiro"]:
         ativos.append(f"   - leiloeiro: {filtros['leiloeiro']}")
+    if filtros["data_limite"]:
+        ativos.append(f"   - data limite: {filtros['data_limite']}")
 
     if ativos:
         print("   Filtros ativos:")
@@ -116,8 +123,9 @@ def mostrar_resumo_filtros(pais, filtros):
     print("   2 - Adicionar filtro de Pick")
     print("   3 - Adicionar filtro de estado de conservação")
     print("   4 - Adicionar filtro de leiloeiro")
-    print("   5 - Buscar agora")
-    print("   6 - Limpar filtros")
+    print("   5 - Adicionar filtro de data limite")
+    print("   6 - Buscar agora")
+    print("   7 - Limpar filtros")
     print("   0 - Voltar ao menu principal")
     print("=" * 45)
 
@@ -133,6 +141,7 @@ def escolher_filtros(pais):
         "pick": None,
         "estado": None,
         "leiloeiro": None,
+        "data_limite": None,
     }
 
     while True:
@@ -160,8 +169,19 @@ def escolher_filtros(pais):
                 filtros["leiloeiro"] = valor
                 print(f"   Filtro de leiloeiro adicionado: {valor}")
         elif opcao == "5":
-            return filtros
+            valor = pedir_data_limite()
+            if valor:
+                data_convertida = converter_data(valor)
+                if data_convertida is None:
+                    print(f"   Data inválida: {valor}")
+                    print("   Formatos aceitos: 30/9/2026, 30/09/2026, 2026-09-30")
+                else:
+                    # Guarda no formato padrão (AAAA-MM-DD) pra ficar consistente
+                    filtros["data_limite"] = data_convertida.strftime("%Y-%m-%d")
+                    print(f"   Filtro de data limite adicionado: {valor}")
         elif opcao == "6":
+            return filtros
+        elif opcao == "7":
             for chave in filtros:
                 filtros[chave] = None
             print("   Filtros limpos.")
@@ -170,10 +190,8 @@ def escolher_filtros(pais):
         else:
             print("   Opção inválida.")
 
-
 def aplicar_filtros(lotes, filtros):
     """Aplica todos os filtros ativos na lista de lotes."""
-    # Se todos os filtros forem None, devolve a lista inteira
     if not any(filtros.values()):
         return lotes
 
@@ -205,11 +223,17 @@ def aplicar_filtros(lotes, filtros):
             if not leiloeiro or filtros["leiloeiro"] not in leiloeiro.lower():
                 passa = False
 
+        if filtros["data_limite"]:
+            # O filtro está guardado no formato AAAA-MM-DD
+            limite = datetime.strptime(filtros["data_limite"], "%Y-%m-%d")
+            data_lote = pegar_data(lote)
+            if data_lote is None or data_lote > limite:
+                passa = False
+
         if passa:
             filtrados.append(lote)
 
     return filtrados
-
 
 def montar_termo_busca(pais):
     """Junta o país com a palavra 'cedula' para a busca no site."""
@@ -291,6 +315,41 @@ def pegar_leiloeiro(lote):
         return infos[-1].get_text(strip=True)
     return tag_leiloeiro.get_text(strip=True)
 
+def converter_data(texto):
+    """Tenta converter uma string em data. Aceita vários formatos.
+
+    Retorna um objeto datetime ou None se nenhum formato funcionar.
+    """
+    # Lista de formatos aceitos
+    formatos = [
+        "%d/%m/%Y",   # 30/09/2026 ou 30/9/2026
+        "%d/%m/%y",   # 30/09/26 ou 30/9/26 
+        "%Y-%m-%d",   # 2026-09-30
+        "%d-%m-%Y",   # 30-09-2026
+        "%d-%m-%y",   # 30-09-26
+        "%d.%m.%Y",   # 30.09.2026
+    ]
+    for formato in formatos:
+        try:
+            return datetime.strptime(texto, formato)
+        except ValueError:
+            continue
+    return None
+
+def pegar_data(lote):
+    """Pega a data de encerramento do lote como objeto datetime."""
+    infos = lote.find_all("div", class_="mostbidded__info")
+    if not infos:
+        return None
+    # A primeira info é "28/9/2026 - 20h - RS"
+    texto = infos[0].get_text(strip=True)
+    # Pega só a parte da data (antes do primeiro "-")
+    parte_data = texto.split("-")[0].strip()
+    try:
+        return datetime.strptime(parte_data, "%d/%m/%Y")
+    except ValueError:
+        return None
+
 def filtrar_cedulas(lotes):
     """Filtra a lista, deixando só os lotes cujo título menciona cédula."""
     # Variações aceitas (com e sem acento, singular e plural)
@@ -368,6 +427,10 @@ def buscar_cedulas():
     print(f"   Lotes que são cédulas: {len(lotes)}")
 
     lotes = aplicar_filtros(lotes, filtros)
+
+    # Ordena por data (crescente)
+    lotes.sort(key=lambda l: pegar_data(l) or datetime.max)
+
     print(f"   Lotes após os filtros: {len(lotes)}")
     print()
 
@@ -396,9 +459,16 @@ def mostrar_resultados(lotes):
             titulo = pegar_titulo(lote)
             preco = pegar_preco(lote)
             leiloeiro = pegar_leiloeiro(lote)
+            data = pegar_data(lote)
             link = pegar_link(lote)
+            # Formata a data no mesmo padrão do site (D/M/AAAA)
+            if data:
+                data_formatada = data.strftime("%d/%m/%Y")
+            else:
+                data_formatada = "(sem data)"
             print(f"   Título:    {titulo}")
             print(f"   Preço:     {preco}")
+            print(f"   Data:      {data_formatada}")
             print(f"   Leiloeiro: {leiloeiro}")
             print(f"   Link:      {link}")
             print()
