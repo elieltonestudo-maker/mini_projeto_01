@@ -174,6 +174,36 @@ def filtrar_cedulas(lotes):
                 break
     return filtrados
 
+def filtrar_por_refino(lotes, refino, valor):
+    """Filtra os lotes pelo refino escolhido (ano, pick ou estado)."""
+    if refino == "pais" or valor is None:
+        # Sem refino, devolve a lista inteira
+        return lotes
+
+    filtrados = []
+    for lote in lotes:
+        titulo = pegar_titulo(lote)
+        if titulo is None:
+            continue
+        titulo_minusculo = titulo.lower()
+
+        if refino == "ano":
+            # Busca o ano no título
+            if valor in titulo_minusculo:
+                filtrados.append(lote)
+
+        elif refino == "pick":
+            # Tenta achar o pick no formato "216" ou "p-216"
+            if valor in titulo_minusculo or f"p-{valor}" in titulo_minusculo:
+                filtrados.append(lote)
+
+        elif refino == "estado":
+            # Busca o estado no título
+            if valor in titulo_minusculo:
+                filtrados.append(lote)
+
+    return filtrados
+
 def buscar_cedulas():
     """Fluxo principal de busca."""
     pais = pedir_pais()
@@ -225,6 +255,9 @@ def buscar_cedulas():
 
     lotes = filtrar_cedulas(lotes)
     print(f"   Lotes que são cédulas: {len(lotes)}")
+
+    lotes = filtrar_por_refino(lotes, refino, valor)
+    print(f"   Lotes após o refino: {len(lotes)}")
     print()
 
     # Mostra o link dos 8 primeiros lotes
