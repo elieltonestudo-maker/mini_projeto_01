@@ -46,6 +46,38 @@ def pedir_palavra_chave():
     """Pede uma palavra-chave livre para o usuário."""
     return input("   Digite a palavra-chave: ").strip().lower()
 
+def pedir_faixa_preco():
+    """Pede o preço mínimo e máximo. Repete até a faixa ser válida."""
+    while True:
+        minimo_texto = input("   Digite o preço mínimo (ou Enter para ignorar): ").strip()
+        maximo_texto = input("   Digite o preço máximo (ou Enter para ignorar): ").strip()
+
+        minimo = None
+        maximo = None
+
+        if minimo_texto:
+            minimo = converter_preco(minimo_texto)
+            if minimo is None:
+                print(f"   Preço mínimo inválido: {minimo_texto}")
+                print("   Tente novamente.")
+                continue
+
+        if maximo_texto:
+            maximo = converter_preco(maximo_texto)
+            if maximo is None:
+                print(f"   Preço máximo inválido: {maximo_texto}")
+                print("   Tente novamente.")
+                continue
+
+        # Validação: mínimo não pode ser maior que o máximo
+        if minimo is not None and maximo is not None and minimo > maximo:
+            print(f"   Erro: preço mínimo (R$ {minimo:.2f}) é maior que o máximo (R$ {maximo:.2f}).")
+            print("   Tente novamente.")
+            continue
+
+        # Se chegou até aqui, a faixa é válida
+        return minimo, maximo
+
 def mostrar_menu_estado():
     """Mostra as opções de estado de conservação."""
     print()
@@ -97,6 +129,16 @@ def converter_data(texto):
             continue
     return None
 
+def converter_preco(texto):
+    """Converte texto de preço ('10', '10.50', 'R$ 10,00') em float ou None."""
+    if not texto:
+        return None
+    limpo = texto.replace("R$", "").strip()
+    limpo = limpo.replace(".", "").replace(",", ".")
+    try:
+        return float(limpo)
+    except ValueError:
+        return None
 
 def mostrar_resumo_filtros(pais, filtros):
     """Mostra o cabeçalho com o país e os filtros ativos no momento."""
@@ -117,6 +159,15 @@ def mostrar_resumo_filtros(pais, filtros):
         ativos.append(f"   - data limite: {filtros['data_limite']}")
     if filtros["palavra_chave"]:
         ativos.append(f"   - palavra-chave: {filtros['palavra_chave']}")
+    if filtros["preco_min"] is not None or filtros["preco_max"] is not None:
+        minimo = filtros["preco_min"]
+        maximo = filtros["preco_max"]
+        if minimo is not None and maximo is not None:
+            ativos.append(f"   - preço: R$ {minimo:.2f} até R$ {maximo:.2f}")
+        elif minimo is not None:
+            ativos.append(f"   - preço: a partir de R$ {minimo:.2f}")
+        else:
+            ativos.append(f"   - preço: até R$ {maximo:.2f}")
 
     if ativos:
         print("   Filtros ativos:")
@@ -132,8 +183,9 @@ def mostrar_resumo_filtros(pais, filtros):
     print("   4 - Adicionar filtro de leiloeiro")
     print("   5 - Adicionar filtro de data limite")
     print("   6 - Adicionar palavra-chave")
-    print("   7 - Buscar agora")
-    print("   8 - Limpar filtros")
+    print("   7 - Adicionar faixa de preço")
+    print("   8 - Buscar agora")
+    print("   9 - Limpar filtros")
     print("   0 - Voltar ao menu principal")
     print("=" * 45)
 
@@ -146,6 +198,8 @@ def escolher_filtros(pais):
         "leiloeiro": None,
         "data_limite": None,
         "palavra_chave": None,
+        "preco_min": None,
+        "preco_max": None,
     }
 
     while True:
@@ -188,8 +242,14 @@ def escolher_filtros(pais):
                 filtros["palavra_chave"] = valor
                 print(f"   Palavra-chave adicionada: {valor}")
         elif opcao == "7":
-            return filtros
+            minimo, maximo = pedir_faixa_preco()
+            if minimo is not None or maximo is not None:
+                filtros["preco_min"] = minimo
+                filtros["preco_max"] = maximo
+                print("   Faixa de preço adicionada.")
         elif opcao == "8":
+            return filtros
+        elif opcao == "9":
             for chave in filtros:
                 filtros[chave] = None
             print("   Filtros limpos.")
@@ -262,7 +322,7 @@ def buscar_cedulas():
     # Cria o objeto Busca e passa os filtros escolhidos
     busca = Busca(pais)
     for chave, valor in filtros_escolhidos.items():
-        if valor:
+        if valor is not None:
             busca.adicionar_filtro(chave, valor)
 
     print()

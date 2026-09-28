@@ -41,6 +41,8 @@ class Busca:
             "leiloeiro": None,
             "data_limite": None,
             "palavra_chave": None,
+            "preco_min": None,
+            "preco_max": None,
         }
         self.lotes = []
 
@@ -176,6 +178,16 @@ class Busca:
             if self.filtros["palavra_chave"]:
                 if self.filtros["palavra_chave"] not in titulo_minusculo:
                     passa = False
+
+            if self.filtros["preco_min"] is not None or self.filtros["preco_max"] is not None:
+                valor = lote.preco_numerico()
+                if valor is None:
+                    passa = False
+                else:
+                    if self.filtros["preco_min"] is not None and valor < self.filtros["preco_min"]:
+                        passa = False
+                    if self.filtros["preco_max"] is not None and valor > self.filtros["preco_max"]:
+                        passa = False
 
             if passa:
                 filtrados.append(lote)

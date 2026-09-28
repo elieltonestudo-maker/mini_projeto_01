@@ -67,3 +67,15 @@ class Lote:
         if self.data:
             return self.data.strftime("%d/%m/%Y")
         return "(sem data)"
+
+    def preco_numerico(self):
+        """Devolve o preço como número (float) ou None se não conseguir converter."""
+        if not self.preco:
+            return None
+        # Remove "R$", espaços, ponto de milhar e troca vírgula por ponto
+        limpo = self.preco.replace("R$", "").strip()
+        limpo = limpo.replace(".", "").replace(",", ".")
+        try:
+            return float(limpo)
+        except ValueError:
+            return None
