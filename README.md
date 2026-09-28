@@ -15,6 +15,8 @@ O objetivo principal é aplicar os conceitos de **Orientação a Objetos** e **r
   - **Estado de conservação** (FE, SOB, MBC, BC, etc.)
   - **Leiloeiro** (nome do vendedor, ex: `ana aquino`)
   - **Data limite** de encerramento do leilão (ex: `30/9/2026`)
+  - **Palavra-chave** livre (ex: `polimero`, `maria eva`, `500`)
+  - **Faixa de preço** (mínimo e máximo, com validação)
 - **Paginação automática:** O programa percorre todas as páginas de resultados do site automaticamente (21 itens por página).
 - **Ordenação por data:** Os resultados são exibidos em ordem crescente de encerramento (os mais próximos primeiro).
 - **Exibição paginada no terminal:** Os lotes são mostrados de 8 em 8, com opção de avançar, mostrar todos ou parar.
@@ -62,14 +64,15 @@ O projeto foi construído com duas classes principais:
 
 ```text
 mini_projeto_01/
-├── lote.py             # Classe Lote (representa um lote individual)
-├── busca.py            # Classe Busca (encapsula raspagem e filtragem)
-├── scraper.py          # Programa principal (menus e exibição)
-├── requirements.txt    # Dependências do projeto
-├── README.md           # Esta documentação
-├── INSTALACAO.md       # Como instalar e executar
-├── COMO_USAR.md        # Roteiro de teste passo a passo
-└── .gitignore          # Arquivos ignorados pelo Git
+├── lote.py               # Classe Lote (representa um lote individual)
+├── busca.py              # Classe Busca (encapsula raspagem e filtragem)
+├── scraper.py            # Programa principal (menus e exibição)
+├── requirements.txt      # Dependências do projeto
+├── README.md             # Esta documentação
+├── INSTALACAO.md         # Como instalar e executar
+├── COMO_USAR.md          # Roteiro de teste passo a passo
+├── EXPLICACAO_CODIGO.md  # O que cada função faz
+└── .gitignore            # Arquivos ignorados pelo Git
 ```
 
 ---
@@ -96,6 +99,7 @@ python scraper.py
 
 - [**INSTALACAO.md**](INSTALACAO.md) — Como clonar, instalar e rodar o projeto na sua máquina
 - [**COMO_USAR.md**](COMO_USAR.md) — Roteiro de teste e funcionalidades do sistema
+- [**EXPLICACAO_CODIGO.md**](EXPLICACAO_CODIGO.md) — O que cada função e classe faz
 
 ---
 

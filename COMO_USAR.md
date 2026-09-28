@@ -84,8 +84,10 @@ Quando os resultados aparecem, você pode:
 | **3** | Adicionar filtro de estado de conservação |
 | **4** | Adicionar filtro de leiloeiro |
 | **5** | Adicionar filtro de data limite |
-| **6** | Buscar agora |
-| **7** | Limpar todos os filtros |
+| **6** | Adicionar palavra-chave livre |
+| **7** | Adicionar faixa de preço (mínimo e máximo) |
+| **8** | Buscar agora |
+| **9** | Limpar todos os filtros |
 | **0** | Voltar ao menu principal |
 
 ---
@@ -117,10 +119,31 @@ O filtro de data limite aceita vários formatos:
 
 ---
 
+## 💰 Faixa de preço
+
+O filtro de faixa de preço aceita:
+
+- **Mínimo e máximo:** ex: `10` e `50` (lotes entre R$ 10 e R$ 50)
+- **Só mínimo:** preenche o mínimo e aperta **Enter** no máximo
+- **Só máximo:** aperta **Enter** no mínimo e preenche o máximo
+- **Cancelar:** aperta **Enter** nos dois campos (não adiciona o filtro)
+
+Se o preço mínimo for **maior** que o máximo, o programa avisa o erro e pede para digitar de novo.
+
+Formatos aceitos:
+- `10`
+- `10.50`
+- `10,50`
+- `R$ 10,00`
+
+---
+
+
+
 ## 💡 Dicas
 
 - Os filtros **se combinam** — você pode adicionar vários antes de buscar.
-- Se errar um filtro, use a opção `7` para limpar tudo e começar de novo.
+- Se errar um filtro, use a opção `9` para limpar tudo e começar de novo.
 - O programa **avisa** quando a data digitada é inválida e não adiciona o filtro.
 - Se nenhum lote for encontrado, o programa mostra uma mensagem clara.
 - A ordenação é sempre **crescente por data** — os leilões que encerram primeiro aparecem no topo.
