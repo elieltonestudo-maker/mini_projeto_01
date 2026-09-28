@@ -42,6 +42,9 @@ def pedir_data_limite():
     """Pede uma data limite no formato D/M/AAAA."""
     return input("   Mostrar lotes que encerram até (ex: 30/9/2026): ").strip()
 
+def pedir_palavra_chave():
+    """Pede uma palavra-chave livre para o usuário."""
+    return input("   Digite a palavra-chave: ").strip().lower()
 
 def mostrar_menu_estado():
     """Mostra as opções de estado de conservação."""
@@ -112,6 +115,8 @@ def mostrar_resumo_filtros(pais, filtros):
         ativos.append(f"   - leiloeiro: {filtros['leiloeiro']}")
     if filtros["data_limite"]:
         ativos.append(f"   - data limite: {filtros['data_limite']}")
+    if filtros["palavra_chave"]:
+        ativos.append(f"   - palavra-chave: {filtros['palavra_chave']}")
 
     if ativos:
         print("   Filtros ativos:")
@@ -126,11 +131,11 @@ def mostrar_resumo_filtros(pais, filtros):
     print("   3 - Adicionar filtro de estado de conservação")
     print("   4 - Adicionar filtro de leiloeiro")
     print("   5 - Adicionar filtro de data limite")
-    print("   6 - Buscar agora")
-    print("   7 - Limpar filtros")
+    print("   6 - Adicionar palavra-chave")
+    print("   7 - Buscar agora")
+    print("   8 - Limpar filtros")
     print("   0 - Voltar ao menu principal")
     print("=" * 45)
-
 
 def escolher_filtros(pais):
     """Menu combinável de filtros. Devolve um dicionário ou None se cancelar."""
@@ -140,6 +145,7 @@ def escolher_filtros(pais):
         "estado": None,
         "leiloeiro": None,
         "data_limite": None,
+        "palavra_chave": None,
     }
 
     while True:
@@ -177,8 +183,13 @@ def escolher_filtros(pais):
                     filtros["data_limite"] = data_convertida.strftime("%Y-%m-%d")
                     print(f"   Filtro de data limite adicionado: {valor}")
         elif opcao == "6":
-            return filtros
+            valor = pedir_palavra_chave()
+            if valor:
+                filtros["palavra_chave"] = valor
+                print(f"   Palavra-chave adicionada: {valor}")
         elif opcao == "7":
+            return filtros
+        elif opcao == "8":
             for chave in filtros:
                 filtros[chave] = None
             print("   Filtros limpos.")
@@ -186,7 +197,6 @@ def escolher_filtros(pais):
             return None
         else:
             print("   Opção inválida.")
-
 
 def mostrar_resultados(lotes, busca):
     """Mostra os lotes no terminal, de 8 em 8."""

@@ -40,6 +40,7 @@ class Busca:
             "estado": None,
             "leiloeiro": None,
             "data_limite": None,
+            "palavra_chave": None,
         }
         self.lotes = []
 
@@ -170,6 +171,10 @@ class Busca:
             if self.filtros["data_limite"]:
                 limite = datetime.strptime(self.filtros["data_limite"], "%Y-%m-%d")
                 if lote.data is None or lote.data > limite:
+                    passa = False
+
+            if self.filtros["palavra_chave"]:
+                if self.filtros["palavra_chave"] not in titulo_minusculo:
                     passa = False
 
             if passa:
