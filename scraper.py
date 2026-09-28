@@ -366,8 +366,6 @@ def filtrar_cedulas(lotes):
                 break
     return filtrados
 
-
-
 def baixar_todas_paginas(termo):
     """Baixa todas as páginas de resultados até não encontrar mais lotes."""
     todos_lotes = []
@@ -395,6 +393,125 @@ def baixar_todas_paginas(termo):
             break
 
     return todos_lotes
+
+def salvar_txt(lotes, pais, filtros):
+    """Salva a lista de lotes em um arquivo de texto."""
+    nome = input("   Digite o nome do arquivo (sem .txt): ").strip()
+    if not nome:
+        print("   Nome vazio. Salvamento cancelado.")
+        return
+
+    # Garante que termina com .txt
+    if not nome.endswith(".txt"):
+        nome = nome + ".txt"
+
+    try:
+        arquivo = open(nome, "w", encoding="utf-8")
+    except OSError as erro:
+        print(f"   Erro ao criar o arquivo: {erro}")
+        return
+
+    # Cabeçalho
+    arquivo.write("=" * 45 + "\n")
+    arquivo.write("  BUSCADOR DE CÉDULAS - LEILÕES BR\n")
+    arquivo.write("=" * 45 + "\n")
+    arquivo.write(f"País: {pais}\n")
+    arquivo.write("Filtros aplicados:\n")
+
+    algum_filtro = False
+    for chave, valor in filtros.items():
+        if valor:
+            arquivo.write(f"  - {chave}: {valor}\n")
+            algum_filtro = True
+    if not algum_filtro:
+        arquivo.write("  (nenhum)\n")
+
+    agora = datetime.now().strftime("%d/%m/%Y %H:%M")
+    arquivo.write(f"Total de lotes: {len(lotes)}\n")
+    arquivo.write(f"Data da busca: {agora}\n")
+    arquivo.write("=" * 45 + "\n\n")
+
+    # Cada lote
+    for i, lote in enumerate(lotes, start=1):
+        titulo = pegar_titulo(lote)
+        preco = pegar_preco(lote)
+        data = pegar_data(lote)
+        leiloeiro = pegar_leiloeiro(lote)
+        link = pegar_link(lote)
+
+        if data:
+            data_formatada = data.strftime("%d/%m/%Y")
+        else:
+            data_formatada = "(sem data)"
+
+        arquivo.write(f"Lote {i}\n")
+        arquivo.write(f"  Título:    {titulo}\n")
+        arquivo.write(f"  Preço:     {preco}\n")
+        arquivo.write(f"  Data:      {data_formatada}\n")
+        arquivo.write(f"  Leiloeiro: {leiloeiro}\n")
+        arquivo.write(f"  Link:      {link}\n\n")
+
+    arquivo.close()
+    print(f"   Arquivo salvo: {nome}")
+
+def mostrar_resultados(lotes, pais, filtros):
+    """Mostra os lotes no terminal, de 8 em 8."""
+    total = len(lotes)
+    inicio = 0
+    tamanho_bloco = 8
+    ja_salvou = False
+
+    while inicio < total:
+        fim = min(inicio + tamanho_bloco, total)
+
+        print(f"   Mostrando {inicio + 1}-{fim} de {total} lotes:")
+        print("-" * 45)
+
+        for lote in lotes[inicio:fim]:
+            titulo = pegar_titulo(lote)
+            preco = pegar_preco(lote)
+            leiloeiro = pegar_leiloeiro(lote)
+            data = pegar_data(lote)
+            link = pegar_link(lote)
+            if data:
+                data_formatada = data.strftime("%d/%m/%Y")
+            else:
+                data_formatada = "(sem data)"
+            print(f"   Título:    {titulo}")
+            print(f"   Preço:     {preco}")
+            print(f"   Data:      {data_formatada}")
+            print(f"   Leiloeiro: {leiloeiro}")
+            print(f"   Link:      {link}")
+            print()
+
+        # Se ainda tem mais lotes, pergunta o que fazer
+        if fim < total:
+            print("-" * 45)
+            print("   [Enter] Próximos 8  |  [t] Mostrar todos  |  [s] Salvar em TXT  |  [q] Parar")
+            escolha = input("   Opção: ").strip().lower()
+
+            if escolha == "q":
+                print("   Listagem encerrada.")
+                return
+            elif escolha == "t":
+                tamanho_bloco = total - inicio
+            elif escolha == "s":
+                salvar_txt(lotes, pais, filtros)
+                ja_salvou = True
+                # Continua na listagem (não retorna)
+            # Se for Enter (vazio), continua com o bloco normal
+        else:
+            print("-" * 45)
+            print("   Fim da lista.")
+            print()
+            # No final, pergunta se quer salvar (se ainda não salvou)
+            if not ja_salvou:
+                print("   Deseja salvar em TXT? (s/n): ", end="")
+                if input().strip().lower() == "s":
+                    salvar_txt(lotes, pais, filtros)
+            return
+
+        inicio = fim
 
 def buscar_cedulas():
     """Fluxo principal de busca."""
@@ -440,57 +557,7 @@ def buscar_cedulas():
         return
 
     # Mostra os resultados (até 8 por vez)
-    mostrar_resultados(lotes)
-
-
-def mostrar_resultados(lotes):
-    """Mostra os lotes no terminal, de 8 em 8."""
-    total = len(lotes)
-    inicio = 0
-    tamanho_bloco = 8
-
-    while inicio < total:
-        fim = min(inicio + tamanho_bloco, total)
-
-        print(f"   Mostrando {inicio + 1}-{fim} de {total} lotes:")
-        print("-" * 45)
-
-        for lote in lotes[inicio:fim]:
-            titulo = pegar_titulo(lote)
-            preco = pegar_preco(lote)
-            leiloeiro = pegar_leiloeiro(lote)
-            data = pegar_data(lote)
-            link = pegar_link(lote)
-            # Formata a data no mesmo padrão do site (D/M/AAAA)
-            if data:
-                data_formatada = data.strftime("%d/%m/%Y")
-            else:
-                data_formatada = "(sem data)"
-            print(f"   Título:    {titulo}")
-            print(f"   Preço:     {preco}")
-            print(f"   Data:      {data_formatada}")
-            print(f"   Leiloeiro: {leiloeiro}")
-            print(f"   Link:      {link}")
-            print()
-
-        # Se ainda tem mais lotes, pergunta o que fazer
-        if fim < total:
-            print("-" * 45)
-            print("   [Enter] Próximos 8  |  [t] Mostrar todos  |  [q] Parar")
-            escolha = input("   Opção: ").strip().lower()
-
-            if escolha == "q":
-                print("   Listagem encerrada.")
-                return
-            elif escolha == "t":
-                tamanho_bloco = total - inicio  # mostra todo o resto de uma vez
-            # Se for Enter (vazio), continua com o bloco normal
-        else:
-            print("-" * 45)
-            print("   Fim da lista.")
-            print()
-
-        inicio = fim
+    mostrar_resultados(lotes, pais, filtros)
 
 def main():
     """Função principal que roda o programa."""
