@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 import re
+from lote import Lote
 
 # Configurações do site
 ENDERECO_BUSCA = "https://leiloesbr.com.br/busca_andamento.asp"
@@ -27,6 +28,7 @@ PADROES_ESTADO = {
     "regular": r"\bregular\b",
 }
 
+
 def mostrar_menu_principal():
     """Mostra o menu inicial e devolve a opção escolhida."""
     print("=" * 45)
@@ -45,7 +47,6 @@ def pedir_pais():
     return pais.strip().lower()
 
 
-
 def pedir_ano():
     """Pede o ano da cédula."""
     return input("   Digite o ano (ex: 1960): ").strip()
@@ -55,13 +56,16 @@ def pedir_pick():
     """Pede o número do Pick da cédula."""
     return input("   Digite o número do Pick (ex: 216): ").strip()
 
+
 def pedir_leiloeiro():
     """Pede o nome do leiloeiro."""
     return input("   Digite o nome do leiloeiro: ").strip().lower()
 
+
 def pedir_data_limite():
     """Pede uma data limite no formato D/M/AAAA."""
     return input("   Mostrar lotes que encerram até (ex: 30/9/2026): ").strip()
+
 
 def mostrar_menu_estado():
     """Mostra as opções de estado de conservação."""
@@ -92,6 +96,28 @@ def escolher_estado():
         return input("   Digite o estado: ").strip().lower()
     else:
         return None
+
+
+def converter_data(texto):
+    """Tenta converter uma string em data. Aceita vários formatos.
+
+    Retorna um objeto datetime ou None se nenhum formato funcionar.
+    """
+    formatos = [
+        "%d/%m/%Y",   # 30/09/2026 ou 30/9/2026
+        "%d/%m/%y",   # 30/09/26 ou 30/9/26
+        "%Y-%m-%d",   # 2026-09-30
+        "%d-%m-%Y",   # 30-09-2026
+        "%d-%m-%y",   # 30-09-26
+        "%d.%m.%Y",   # 30.09.2026
+    ]
+    for formato in formatos:
+        try:
+            return datetime.strptime(texto, formato)
+        except ValueError:
+            continue
+    return None
+
 
 def mostrar_resumo_filtros(pais, filtros):
     """Mostra o cabeçalho com o país e os filtros ativos no momento."""
@@ -176,7 +202,6 @@ def escolher_filtros(pais):
                     print(f"   Data inválida: {valor}")
                     print("   Formatos aceitos: 30/9/2026, 30/09/2026, 2026-09-30")
                 else:
-                    # Guarda no formato padrão (AAAA-MM-DD) pra ficar consistente
                     filtros["data_limite"] = data_convertida.strftime("%Y-%m-%d")
                     print(f"   Filtro de data limite adicionado: {valor}")
         elif opcao == "6":
@@ -190,56 +215,10 @@ def escolher_filtros(pais):
         else:
             print("   Opção inválida.")
 
-def aplicar_filtros(lotes, filtros):
-    """Aplica todos os filtros ativos na lista de lotes."""
-    if not any(filtros.values()):
-        return lotes
-
-    filtrados = []
-    for lote in lotes:
-        titulo = pegar_titulo(lote)
-        leiloeiro = pegar_leiloeiro(lote)
-        if titulo is None:
-            continue
-        titulo_minusculo = titulo.lower()
-
-        passa = True
-
-        if filtros["ano"]:
-            if filtros["ano"] not in titulo_minusculo:
-                passa = False
-
-        if filtros["pick"]:
-            p = filtros["pick"]
-            if p not in titulo_minusculo and f"p-{p}" not in titulo_minusculo:
-                passa = False
-
-        if filtros["estado"]:
-            padrao = PADROES_ESTADO.get(filtros["estado"])
-            if not padrao or not re.search(padrao, titulo, re.IGNORECASE):
-                passa = False
-
-        if filtros["leiloeiro"]:
-            if not leiloeiro or filtros["leiloeiro"] not in leiloeiro.lower():
-                passa = False
-
-        if filtros["data_limite"]:
-            # O filtro está guardado no formato AAAA-MM-DD
-            limite = datetime.strptime(filtros["data_limite"], "%Y-%m-%d")
-            data_lote = pegar_data(lote)
-            if data_lote is None or data_lote > limite:
-                passa = False
-
-        if passa:
-            filtrados.append(lote)
-
-    return filtrados
 
 def montar_termo_busca(pais):
     """Junta o país com a palavra 'cedula' para a busca no site."""
     return f"{pais} cedula"
-
-    return " ".join(partes)
 
 
 def baixar_pagina(termo, pagina=1):
@@ -247,7 +226,7 @@ def baixar_pagina(termo, pagina=1):
     parametros = {
         "op": "2",
         "pesquisa": termo,
-        "v": "21",       # <-- força 21 itens por página (ativa paginação)
+        "v": "21",
         "pag": str(pagina),
     }
 
@@ -263,108 +242,14 @@ def baixar_pagina(termo, pagina=1):
     except requests.RequestException as erro:
         print(f"   Erro ao baixar a página: {erro}")
         return None
-    
+
+
 def encontrar_lotes(html):
-    """Recebe o HTML da página e devolve uma lista com os blocos de cada lote."""
+    """Recebe o HTML da página e devolve uma lista com as tags de cada lote."""
     sopa = BeautifulSoup(html, "html.parser")
-    # Cada lote fica dentro de uma <div class="mostbidded ...">
     lotes = sopa.find_all("div", class_="mostbidded")
     return lotes
 
-def pegar_link(lote):
-    """Pega o link do lote e devolve a URL completa."""
-    # O link fica dentro de <a> com classe 'stretched-link'
-    tag_link = lote.find("a", class_="stretched-link")
-    if tag_link is None:
-        return None
-    # O href é relativo, então juntamos com o endereço do site
-    href = tag_link.get("href", "")
-    if href.startswith("http"):
-        return href
-    return "https://leiloesbr.com.br/" + href
-
-def pegar_titulo(lote):
-    """Pega o título completo do lote (usando o atributo data-bs-original-title)."""
-    # O título completo fica no atributo data-bs-original-title do <a> dentro do título
-    tag_titulo = lote.find("div", class_="mostbidded__title")
-    if tag_titulo is None:
-        return None
-    tag_a = tag_titulo.find("a")
-    if tag_a is None:
-        return None
-    # Tenta pegar o atributo completo; se não tiver, usa o texto do <h3>
-    titulo = tag_a.get("data-bs-original-title") or tag_a.get_text(strip=True)
-    return titulo
-
-def pegar_preco(lote):
-    """Pega o preço do lote."""
-    tag_preco = lote.find("div", class_="venda-price")
-    if tag_preco is None:
-        return None
-    return tag_preco.get_text(strip=True)
-
-def pegar_leiloeiro(lote):
-    """Pega o nome do leiloeiro do lote."""
-    # As infos ficam em <div class="mostbidded__info ...">, e a última é o leiloeiro
-    infos = lote.find_all("div", class_="mostbidded__info")
-    if not infos:
-        return None
-    # A última div de info é o leiloeiro (a primeira é data/UF)
-    tag_leiloeiro = infos[-1].find("a")
-    if tag_leiloeiro is None:
-        return infos[-1].get_text(strip=True)
-    return tag_leiloeiro.get_text(strip=True)
-
-def converter_data(texto):
-    """Tenta converter uma string em data. Aceita vários formatos.
-
-    Retorna um objeto datetime ou None se nenhum formato funcionar.
-    """
-    # Lista de formatos aceitos
-    formatos = [
-        "%d/%m/%Y",   # 30/09/2026 ou 30/9/2026
-        "%d/%m/%y",   # 30/09/26 ou 30/9/26 
-        "%Y-%m-%d",   # 2026-09-30
-        "%d-%m-%Y",   # 30-09-2026
-        "%d-%m-%y",   # 30-09-26
-        "%d.%m.%Y",   # 30.09.2026
-    ]
-    for formato in formatos:
-        try:
-            return datetime.strptime(texto, formato)
-        except ValueError:
-            continue
-    return None
-
-def pegar_data(lote):
-    """Pega a data de encerramento do lote como objeto datetime."""
-    infos = lote.find_all("div", class_="mostbidded__info")
-    if not infos:
-        return None
-    # A primeira info é "28/9/2026 - 20h - RS"
-    texto = infos[0].get_text(strip=True)
-    # Pega só a parte da data (antes do primeiro "-")
-    parte_data = texto.split("-")[0].strip()
-    try:
-        return datetime.strptime(parte_data, "%d/%m/%Y")
-    except ValueError:
-        return None
-
-def filtrar_cedulas(lotes):
-    """Filtra a lista, deixando só os lotes cujo título menciona cédula."""
-    # Variações aceitas (com e sem acento, singular e plural)
-    palavras = ["cédula", "cedula", "cédulas", "cedulas"]
-    filtrados = []
-    for lote in lotes:
-        titulo = pegar_titulo(lote)
-        if titulo is None:
-            continue
-        titulo_minusculo = titulo.lower()
-        for palavra in palavras:
-            if palavra in titulo_minusculo:
-                filtrados.append(lote)
-                break
-    return filtrados
 
 def baixar_todas_paginas(termo):
     """Baixa todas as páginas de resultados até não encontrar mais lotes."""
@@ -378,21 +263,80 @@ def baixar_todas_paginas(termo):
         if html is None:
             break
 
-        lotes = encontrar_lotes(html)
+        tags_lotes = encontrar_lotes(html)
 
-        if not lotes:
-            # Página vazia: acabaram os resultados
+        if not tags_lotes:
             break
 
-        todos_lotes.extend(lotes)
+        # Converte cada tag HTML em um objeto Lote
+        for tag in tags_lotes:
+            todos_lotes.append(Lote(tag))
+
         pagina += 1
 
-        # Segurança: para depois de 20 páginas
         if pagina > 20:
             print("   Limite de 20 páginas atingido.")
             break
 
     return todos_lotes
+
+
+def filtrar_cedulas(lotes):
+    """Filtra a lista, deixando só os lotes cujo título menciona cédula."""
+    palavras = ["cédula", "cedula", "cédulas", "cedulas"]
+    filtrados = []
+    for lote in lotes:
+        if lote.titulo is None:
+            continue
+        titulo_minusculo = lote.titulo.lower()
+        for palavra in palavras:
+            if palavra in titulo_minusculo:
+                filtrados.append(lote)
+                break
+    return filtrados
+
+
+def aplicar_filtros(lotes, filtros):
+    """Aplica todos os filtros ativos na lista de lotes."""
+    if not any(filtros.values()):
+        return lotes
+
+    filtrados = []
+    for lote in lotes:
+        if lote.titulo is None:
+            continue
+        titulo_minusculo = lote.titulo.lower()
+
+        passa = True
+
+        if filtros["ano"]:
+            if filtros["ano"] not in titulo_minusculo:
+                passa = False
+
+        if filtros["pick"]:
+            p = filtros["pick"]
+            if p not in titulo_minusculo and f"p-{p}" not in titulo_minusculo:
+                passa = False
+
+        if filtros["estado"]:
+            padrao = PADROES_ESTADO.get(filtros["estado"])
+            if not padrao or not re.search(padrao, lote.titulo, re.IGNORECASE):
+                passa = False
+
+        if filtros["leiloeiro"]:
+            if not lote.leiloeiro or filtros["leiloeiro"] not in lote.leiloeiro.lower():
+                passa = False
+
+        if filtros["data_limite"]:
+            limite = datetime.strptime(filtros["data_limite"], "%Y-%m-%d")
+            if lote.data is None or lote.data > limite:
+                passa = False
+
+        if passa:
+            filtrados.append(lote)
+
+    return filtrados
+
 
 def salvar_txt(lotes, pais, filtros):
     """Salva a lista de lotes em um arquivo de texto."""
@@ -401,7 +345,6 @@ def salvar_txt(lotes, pais, filtros):
         print("   Nome vazio. Salvamento cancelado.")
         return
 
-    # Garante que termina com .txt
     if not nome.endswith(".txt"):
         nome = nome + ".txt"
 
@@ -411,7 +354,6 @@ def salvar_txt(lotes, pais, filtros):
         print(f"   Erro ao criar o arquivo: {erro}")
         return
 
-    # Cabeçalho
     arquivo.write("=" * 45 + "\n")
     arquivo.write("  BUSCADOR DE CÉDULAS - LEILÕES BR\n")
     arquivo.write("=" * 45 + "\n")
@@ -431,28 +373,17 @@ def salvar_txt(lotes, pais, filtros):
     arquivo.write(f"Data da busca: {agora}\n")
     arquivo.write("=" * 45 + "\n\n")
 
-    # Cada lote
     for i, lote in enumerate(lotes, start=1):
-        titulo = pegar_titulo(lote)
-        preco = pegar_preco(lote)
-        data = pegar_data(lote)
-        leiloeiro = pegar_leiloeiro(lote)
-        link = pegar_link(lote)
-
-        if data:
-            data_formatada = data.strftime("%d/%m/%Y")
-        else:
-            data_formatada = "(sem data)"
-
         arquivo.write(f"Lote {i}\n")
-        arquivo.write(f"  Título:    {titulo}\n")
-        arquivo.write(f"  Preço:     {preco}\n")
-        arquivo.write(f"  Data:      {data_formatada}\n")
-        arquivo.write(f"  Leiloeiro: {leiloeiro}\n")
-        arquivo.write(f"  Link:      {link}\n\n")
+        arquivo.write(f"  Título:    {lote.titulo}\n")
+        arquivo.write(f"  Preço:     {lote.preco}\n")
+        arquivo.write(f"  Data:      {lote.data_formatada()}\n")
+        arquivo.write(f"  Leiloeiro: {lote.leiloeiro}\n")
+        arquivo.write(f"  Link:      {lote.link}\n\n")
 
     arquivo.close()
     print(f"   Arquivo salvo: {nome}")
+
 
 def mostrar_resultados(lotes, pais, filtros):
     """Mostra os lotes no terminal, de 8 em 8."""
@@ -468,23 +399,13 @@ def mostrar_resultados(lotes, pais, filtros):
         print("-" * 45)
 
         for lote in lotes[inicio:fim]:
-            titulo = pegar_titulo(lote)
-            preco = pegar_preco(lote)
-            leiloeiro = pegar_leiloeiro(lote)
-            data = pegar_data(lote)
-            link = pegar_link(lote)
-            if data:
-                data_formatada = data.strftime("%d/%m/%Y")
-            else:
-                data_formatada = "(sem data)"
-            print(f"   Título:    {titulo}")
-            print(f"   Preço:     {preco}")
-            print(f"   Data:      {data_formatada}")
-            print(f"   Leiloeiro: {leiloeiro}")
-            print(f"   Link:      {link}")
+            print(f"   Título:    {lote.titulo}")
+            print(f"   Preço:     {lote.preco}")
+            print(f"   Data:      {lote.data_formatada()}")
+            print(f"   Leiloeiro: {lote.leiloeiro}")
+            print(f"   Link:      {lote.link}")
             print()
 
-        # Se ainda tem mais lotes, pergunta o que fazer
         if fim < total:
             print("-" * 45)
             print("   [Enter] Próximos 8  |  [t] Mostrar todos  |  [s] Salvar em TXT  |  [q] Parar")
@@ -498,13 +419,10 @@ def mostrar_resultados(lotes, pais, filtros):
             elif escolha == "s":
                 salvar_txt(lotes, pais, filtros)
                 ja_salvou = True
-                # Continua na listagem (não retorna)
-            # Se for Enter (vazio), continua com o bloco normal
         else:
             print("-" * 45)
             print("   Fim da lista.")
             print()
-            # No final, pergunta se quer salvar (se ainda não salvou)
             if not ja_salvou:
                 print("   Deseja salvar em TXT? (s/n): ", end="")
                 if input().strip().lower() == "s":
@@ -512,6 +430,7 @@ def mostrar_resultados(lotes, pais, filtros):
             return
 
         inicio = fim
+
 
 def buscar_cedulas():
     """Fluxo principal de busca."""
@@ -546,7 +465,7 @@ def buscar_cedulas():
     lotes = aplicar_filtros(lotes, filtros)
 
     # Ordena por data (crescente)
-    lotes.sort(key=lambda l: pegar_data(l) or datetime.max)
+    lotes.sort(key=lambda l: l.data or datetime.max)
 
     print(f"   Lotes após os filtros: {len(lotes)}")
     print()
@@ -556,8 +475,8 @@ def buscar_cedulas():
         print()
         return
 
-    # Mostra os resultados (até 8 por vez)
     mostrar_resultados(lotes, pais, filtros)
+
 
 def main():
     """Função principal que roda o programa."""
