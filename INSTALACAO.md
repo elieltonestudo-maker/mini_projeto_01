@@ -34,16 +34,16 @@ Se aparecer **"comando não encontrado"** ou **"não é reconhecido"**, instale 
 Abra o **CMD** (ou terminal) na pasta onde quer salvar o projeto (ex: `Documentos`):
 
 ```bash
-git clone https://github.com/elieltonestudo-maker/mini_projeto_01.git
+git clone https://github.com/elieltonestudo-maker/fatec_rc-lp2-mini-projeto-01.git
 ```
 
 Depois entre na pasta do projeto:
 
 ```bash
-cd mini_projeto_01
+cd fatec_rc-lp2-mini-projeto-01
 ```
 
-**Esperado:** a pasta `mini_projeto_01` é criada com todos os arquivos.
+**Esperado:** a pasta `fatec_rc-lp2-mini-projeto-01` é criada com todos os arquivos.
 
 ---
 
@@ -90,7 +90,7 @@ source venv/bin/activate
 **Esperado:** o prompt do terminal passa a mostrar `(venv)` no começo:
 
 ```
-(venv) C:\...\mini_projeto_01>
+(venv) C:\...\fatec_rc-lp2-mini-projeto-01>
 ```
 
 ---
@@ -152,8 +152,8 @@ O `(venv)` desaparece do prompt, indicando que você saiu do ambiente isolado.
 
 ### Windows (PowerShell)
 ```powershell
-git clone https://github.com/elieltonestudo-maker/mini_projeto_01.git
-cd mini_projeto_01
+git clone https://github.com/elieltonestudo-maker/fatec_rc-lp2-mini-projeto-01.git
+cd fatec_rc-lp2-mini-projeto-01
 python -m venv venv
 venv\Scripts\Activate.ps1
 pip install -r requirements.txt
@@ -162,8 +162,8 @@ python scraper.py
 
 ### Linux / Mac
 ```bash
-git clone https://github.com/elieltonestudo-maker/mini_projeto_01.git
-cd mini_projeto_01
+git clone https://github.com/elieltonestudo-maker/fatec_rc-lp2-mini-projeto-01.git
+cd fatec_rc-lp2-mini-projeto-01
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt

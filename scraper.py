@@ -1,4 +1,4 @@
-# mini_projeto_01 - Buscador de cédulas no site Leilões BR
+# fatec_rc-lp2-mini-projeto-01 - Buscador de cédulas no site Leilões BR
 # Este programa busca cédulas em leilões online usando web scraping.
 
 from datetime import datetime

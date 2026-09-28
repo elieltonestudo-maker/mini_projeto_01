@@ -16,7 +16,7 @@ Este documento traz um roteiro passo a passo para testar todas as funcionalidade
   ```
 - Escolha a opção `1` (Buscar cédulas)
 - Digite o país: `argentina`
-- Escolha a opção `6` (Buscar agora) — sem adicionar filtros
+- Escolha a opção `8` (Buscar agora) — sem adicionar filtros
 - **Esperado:** o programa baixa 5 páginas e encontra cerca de **76 lotes**
 
 ### 2. Filtro por estado de conservação
@@ -26,7 +26,7 @@ Este documento traz um roteiro passo a passo para testar todas as funcionalidade
 - País: `argentina`
 - Adicione filtro `3` (estado de conservação)
 - Escolha a opção `1` (FE / Flor de Estampa)
-- Escolha `6` (Buscar agora)
+- Escolha `8` (Buscar agora)
 - **Esperado:** só aparecem lotes com "FE" ou "Flor de Estampa" no título
 
 ### 3. Filtros combinados
@@ -36,7 +36,7 @@ Este documento traz um roteiro passo a passo para testar todas as funcionalidade
 - País: `argentina`
 - Adicione filtro `4` (leiloeiro): `ana aquino`
 - Adicione filtro `5` (data limite): `12/10/26`
-- Escolha `6` (Buscar agora)
+- Escolha `8` (Buscar agora)
 - **Esperado:** só aparecem lotes da **Ana Aquino Leilões** que encerram até **12/10/2026**
 
 ### 4. Salvar resultados em TXT

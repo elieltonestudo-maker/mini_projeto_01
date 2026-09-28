@@ -63,7 +63,7 @@ O projeto foi construído com duas classes principais:
 ## 📁 Estrutura do Projeto
 
 ```text
-mini_projeto_01/
+fatec_rc-lp2-mini-projeto-01/
 ├── lote.py               # Classe Lote (representa um lote individual)
 ├── busca.py              # Classe Busca (encapsula raspagem e filtragem)
 ├── scraper.py            # Programa principal (menus e exibição)
@@ -84,8 +84,8 @@ Para instruções detalhadas de **instalação passo a passo** (clone, ambiente 
 ### Resumo rápido
 
 ```bash
-git clone https://github.com/elieltonestudo-maker/mini_projeto_01.git
-cd mini_projeto_01
+git clone https://github.com/elieltonestudo-maker/fatec_rc-lp2-mini-projeto-01.git
+cd fatec_rc-lp2-mini-projeto-01
 python -m venv venv
 venv\Scripts\Activate.ps1     # Windows PowerShell
 # ou: source venv/bin/activate  # Linux/Mac
