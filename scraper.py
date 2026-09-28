@@ -1,32 +1,8 @@
 # mini_projeto_01 - Buscador de cédulas no site Leilões BR
 # Este programa busca cédulas em leilões online usando web scraping.
 
-import requests
-from bs4 import BeautifulSoup
 from datetime import datetime
-import re
-from lote import Lote
-
-# Configurações do site
-ENDERECO_BUSCA = "https://leiloesbr.com.br/busca_andamento.asp"
-
-# Cabeçalho para o site achar que somos um navegador de verdade
-CABECALHO = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    )
-}
-
-# Padrões de estado de conservação (usados com expressão regular)
-PADROES_ESTADO = {
-    "mbc": r"\bmbc\b",
-    "sob": r"\bsob\b|\bsoberba\b",
-    "fe": r"\bfe\b|\bflor de estampa\b",
-    "bc": r"\bbc\b",
-    "regular": r"\bregular\b",
-}
+from busca import Busca
 
 
 def mostrar_menu_principal():
@@ -157,11 +133,7 @@ def mostrar_resumo_filtros(pais, filtros):
 
 
 def escolher_filtros(pais):
-    """Menu combinável de filtros. Roda até o usuário mandar buscar.
-
-    Retorna um dicionário com os filtros escolhidos, ou None se o
-    usuário quiser voltar ao menu principal sem buscar.
-    """
+    """Menu combinável de filtros. Devolve um dicionário ou None se cancelar."""
     filtros = {
         "ano": None,
         "pick": None,
@@ -216,176 +188,7 @@ def escolher_filtros(pais):
             print("   Opção inválida.")
 
 
-def montar_termo_busca(pais):
-    """Junta o país com a palavra 'cedula' para a busca no site."""
-    return f"{pais} cedula"
-
-
-def baixar_pagina(termo, pagina=1):
-    """Baixa a página de busca do site e devolve o HTML ou None se der erro."""
-    parametros = {
-        "op": "2",
-        "pesquisa": termo,
-        "v": "21",
-        "pag": str(pagina),
-    }
-
-    try:
-        resposta = requests.get(
-            ENDERECO_BUSCA,
-            params=parametros,
-            headers=CABECALHO,
-            timeout=30,
-        )
-        resposta.raise_for_status()
-        return resposta.text
-    except requests.RequestException as erro:
-        print(f"   Erro ao baixar a página: {erro}")
-        return None
-
-
-def encontrar_lotes(html):
-    """Recebe o HTML da página e devolve uma lista com as tags de cada lote."""
-    sopa = BeautifulSoup(html, "html.parser")
-    lotes = sopa.find_all("div", class_="mostbidded")
-    return lotes
-
-
-def baixar_todas_paginas(termo):
-    """Baixa todas as páginas de resultados até não encontrar mais lotes."""
-    todos_lotes = []
-    pagina = 1
-
-    while True:
-        print(f"   Baixando página {pagina}...")
-        html = baixar_pagina(termo, pagina)
-
-        if html is None:
-            break
-
-        tags_lotes = encontrar_lotes(html)
-
-        if not tags_lotes:
-            break
-
-        # Converte cada tag HTML em um objeto Lote
-        for tag in tags_lotes:
-            todos_lotes.append(Lote(tag))
-
-        pagina += 1
-
-        if pagina > 20:
-            print("   Limite de 20 páginas atingido.")
-            break
-
-    return todos_lotes
-
-
-def filtrar_cedulas(lotes):
-    """Filtra a lista, deixando só os lotes cujo título menciona cédula."""
-    palavras = ["cédula", "cedula", "cédulas", "cedulas"]
-    filtrados = []
-    for lote in lotes:
-        if lote.titulo is None:
-            continue
-        titulo_minusculo = lote.titulo.lower()
-        for palavra in palavras:
-            if palavra in titulo_minusculo:
-                filtrados.append(lote)
-                break
-    return filtrados
-
-
-def aplicar_filtros(lotes, filtros):
-    """Aplica todos os filtros ativos na lista de lotes."""
-    if not any(filtros.values()):
-        return lotes
-
-    filtrados = []
-    for lote in lotes:
-        if lote.titulo is None:
-            continue
-        titulo_minusculo = lote.titulo.lower()
-
-        passa = True
-
-        if filtros["ano"]:
-            if filtros["ano"] not in titulo_minusculo:
-                passa = False
-
-        if filtros["pick"]:
-            p = filtros["pick"]
-            if p not in titulo_minusculo and f"p-{p}" not in titulo_minusculo:
-                passa = False
-
-        if filtros["estado"]:
-            padrao = PADROES_ESTADO.get(filtros["estado"])
-            if not padrao or not re.search(padrao, lote.titulo, re.IGNORECASE):
-                passa = False
-
-        if filtros["leiloeiro"]:
-            if not lote.leiloeiro or filtros["leiloeiro"] not in lote.leiloeiro.lower():
-                passa = False
-
-        if filtros["data_limite"]:
-            limite = datetime.strptime(filtros["data_limite"], "%Y-%m-%d")
-            if lote.data is None or lote.data > limite:
-                passa = False
-
-        if passa:
-            filtrados.append(lote)
-
-    return filtrados
-
-
-def salvar_txt(lotes, pais, filtros):
-    """Salva a lista de lotes em um arquivo de texto."""
-    nome = input("   Digite o nome do arquivo (sem .txt): ").strip()
-    if not nome:
-        print("   Nome vazio. Salvamento cancelado.")
-        return
-
-    if not nome.endswith(".txt"):
-        nome = nome + ".txt"
-
-    try:
-        arquivo = open(nome, "w", encoding="utf-8")
-    except OSError as erro:
-        print(f"   Erro ao criar o arquivo: {erro}")
-        return
-
-    arquivo.write("=" * 45 + "\n")
-    arquivo.write("  BUSCADOR DE CÉDULAS - LEILÕES BR\n")
-    arquivo.write("=" * 45 + "\n")
-    arquivo.write(f"País: {pais}\n")
-    arquivo.write("Filtros aplicados:\n")
-
-    algum_filtro = False
-    for chave, valor in filtros.items():
-        if valor:
-            arquivo.write(f"  - {chave}: {valor}\n")
-            algum_filtro = True
-    if not algum_filtro:
-        arquivo.write("  (nenhum)\n")
-
-    agora = datetime.now().strftime("%d/%m/%Y %H:%M")
-    arquivo.write(f"Total de lotes: {len(lotes)}\n")
-    arquivo.write(f"Data da busca: {agora}\n")
-    arquivo.write("=" * 45 + "\n\n")
-
-    for i, lote in enumerate(lotes, start=1):
-        arquivo.write(f"Lote {i}\n")
-        arquivo.write(f"  Título:    {lote.titulo}\n")
-        arquivo.write(f"  Preço:     {lote.preco}\n")
-        arquivo.write(f"  Data:      {lote.data_formatada()}\n")
-        arquivo.write(f"  Leiloeiro: {lote.leiloeiro}\n")
-        arquivo.write(f"  Link:      {lote.link}\n\n")
-
-    arquivo.close()
-    print(f"   Arquivo salvo: {nome}")
-
-
-def mostrar_resultados(lotes, pais, filtros):
+def mostrar_resultados(lotes, busca):
     """Mostra os lotes no terminal, de 8 em 8."""
     total = len(lotes)
     inicio = 0
@@ -417,7 +220,8 @@ def mostrar_resultados(lotes, pais, filtros):
             elif escolha == "t":
                 tamanho_bloco = total - inicio
             elif escolha == "s":
-                salvar_txt(lotes, pais, filtros)
+                nome = input("   Digite o nome do arquivo (sem .txt): ")
+                busca.salvar_txt(nome)
                 ja_salvou = True
         else:
             print("-" * 45)
@@ -426,48 +230,37 @@ def mostrar_resultados(lotes, pais, filtros):
             if not ja_salvou:
                 print("   Deseja salvar em TXT? (s/n): ", end="")
                 if input().strip().lower() == "s":
-                    salvar_txt(lotes, pais, filtros)
+                    nome = input("   Digite o nome do arquivo (sem .txt): ")
+                    busca.salvar_txt(nome)
             return
 
         inicio = fim
 
 
 def buscar_cedulas():
-    """Fluxo principal de busca."""
+    """Fluxo principal de busca usando a classe Busca."""
     pais = pedir_pais()
     if not pais:
         print("   País não informado. Voltando ao menu.")
         return
 
-    filtros = escolher_filtros(pais)
-    if filtros is None:
+    filtros_escolhidos = escolher_filtros(pais)
+    if filtros_escolhidos is None:
         print("   Busca cancelada.")
         return
 
-    termo = montar_termo_busca(pais)
-    print()
-    print("=" * 45)
-    print(f"   Buscando por: {termo}")
-    print("=" * 45)
-
-    lotes = baixar_todas_paginas(termo)
-
-    if not lotes:
-        print("   Não foi possível baixar as páginas.")
-        return
+    # Cria o objeto Busca e passa os filtros escolhidos
+    busca = Busca(pais)
+    for chave, valor in filtros_escolhidos.items():
+        if valor:
+            busca.adicionar_filtro(chave, valor)
 
     print()
-    print(f"   Lotes encontrados no site: {len(lotes)}")
+    print("=" * 45)
+    print(f"   Buscando por: {busca.termo}")
+    print("=" * 45)
 
-    lotes = filtrar_cedulas(lotes)
-    print(f"   Lotes que são cédulas: {len(lotes)}")
-
-    lotes = aplicar_filtros(lotes, filtros)
-
-    # Ordena por data (crescente)
-    lotes.sort(key=lambda l: l.data or datetime.max)
-
-    print(f"   Lotes após os filtros: {len(lotes)}")
+    lotes = busca.executar()
     print()
 
     if not lotes:
@@ -475,7 +268,7 @@ def buscar_cedulas():
         print()
         return
 
-    mostrar_resultados(lotes, pais, filtros)
+    mostrar_resultados(lotes, busca)
 
 
 def main():
